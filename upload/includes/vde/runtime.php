@@ -249,7 +249,6 @@
 			require_once(DIR . '/includes/adminfunctions_template.php');
 
 			foreach ($project->getTemplates() as $template => $content) {
-				devdebug($content);
 				$this->_registry->templatecache[$template] = compile_template($content);
 			}
 

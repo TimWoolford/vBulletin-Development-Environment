@@ -166,14 +166,12 @@
 		 */
 		public function getTemplates()
 		{
-			$templates = array();
-			error_log("******** getTemplates()");
 			if (!is_dir($dir = $this->_path . '/templates')) {
 				return array();
 			}
 
+			$templates = array();
 			foreach (scandir($dir) as $file) {
-				error_log("FILE - " . $file);
 				if (substr($file, -5) == '.html') {
 					$templatename = substr($file, 0, -5);
 				} elseif (substr($file, -4) == '.css') {
@@ -181,10 +179,7 @@
 				} else {
 					continue;
 				}
-
-				error_log($templatename);
 				$templates[$templatename] = file_get_contents("$dir/$file");
-
 			}
 
 			return $templates;
@@ -219,10 +214,7 @@
 					'version' => $this->meta['version'],
 					'author' => $this->meta['author'],
 					'templatetype' => $templatetype
-
 				);
-				error_log($templatename);
-
 			}
 
 			return $templates;
