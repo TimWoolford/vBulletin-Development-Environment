@@ -423,27 +423,33 @@
 			}
 
 			foreach (scandir($dir) as $fieldName) {
+				if (substr($fieldName, 0, 1) == '.') {
+					continue;
+				}
+
+				$phraseType = array(
+					'fieldname' => $fieldName,
+					'title' => ucwords($fieldName),
+					'phrases' => array()
+				);
+
 				if (file_exists($fieldFile = "$dir/$fieldName/$fieldName.txt")) {
-					$phraseType = array(
-						'title' => trim(file_get_contents($fieldFile)),
-						'fieldname' => $fieldName,
-						'phrases' => array()
-					);
+					$phraseType['title'] = trim(file_get_contents($fieldFile));
+				}
 
-					foreach (scandir("$dir/$fieldName") as $varname) {
-						$phraseFile = "$dir/$fieldName/$varname";
-						if ($phraseFile == $fieldFile or substr($phraseFile, -4) != '.txt') {
-							continue;
-						}
-
-						$phraseType['phrases'][substr($varname, 0, -4)] = array(
-							'varname' => substr($varname, 0, -4),
-							'text' => trim(file_get_contents($phraseFile))
-						);
+				foreach (scandir("$dir/$fieldName") as $varname) {
+					$phraseFile = "$dir/$fieldName/$varname";
+					if ($phraseFile == $fieldFile or substr($phraseFile, -4) != '.txt') {
+						continue;
 					}
 
-					$phraseTypes[$fieldName] = $phraseType;
+					$phraseType['phrases'][substr($varname, 0, -4)] = array(
+						'varname' => substr($varname, 0, -4),
+						'text' => trim(file_get_contents($phraseFile))
+					);
 				}
+
+				$phraseTypes[$fieldName] = $phraseType;
 			}
 
 			return $phraseTypes;

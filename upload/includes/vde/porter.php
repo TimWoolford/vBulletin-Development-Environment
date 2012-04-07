@@ -81,10 +81,18 @@
 					mkdir("$out/templates");
 				}
 
-				foreach ($data['templates'] as $title => $html) {
+				foreach ($data['templates'] as $title => $info) {
+					if ($info['templatetype'] == 'template') {
+						$filename = "$title.html";
+					} elseif ($info['templatetype'] == 'css') {
+						$filename = "$title";
+					} else {
+						continue;
+					}
+
 					file_put_contents(
-						"$out/templates/$title.html",
-						$html
+						"$out/templates/$filename",
+						$info['content']
 					);
 				}
 			}
@@ -268,11 +276,14 @@
             SELECT *
               FROM " . TABLE_PREFIX . "template
              WHERE product = " . $this->_registry->db->sql_prepare($id) . "
-               AND templatetype = 'template' 
+               AND templatetype in ('template', 'css')
         ");
 
 			while ($template = $this->_registry->db->fetch_array($result)) {
-				$templates[$template['title']] = $template['template_un'];
+				$templates[$template['title']] =
+						array(
+							'templatetype' => $template['templatetype'],
+							'content' => $template['template_un']);
 			}
 
 			$this->_registry->db->free_result($result);

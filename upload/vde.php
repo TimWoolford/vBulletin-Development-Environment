@@ -10,8 +10,12 @@
 	define('CLI_ARGS', serialize($argv));
 	chdir(dirname($_SERVER['SCRIPT_NAME']));
 
-	require('./global.php');
-	require_once(DIR . '/includes/vde/functions.php');
+    require_once('./includes/class_bootstrap.php');
+
+    $bootstrap = new vB_Bootstrap_Forum();
+    $bootstrap->init();
+
+    require_once(DIR . '/includes/vde/functions.php');
 	require_once(DIR . '/includes/vde/project.php');
 
 	$argv = unserialize(CLI_ARGS);
