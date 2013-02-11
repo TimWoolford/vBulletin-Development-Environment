@@ -11,99 +11,107 @@ class VDE_Porter {
      * @var     vB_Registry
      */
     protected $_registry;
-    
+
     /**
      * Brings vBulletin into scope
      * @param   vB_Registry
      */
     public function __construct(vB_Registry $registry) {
-        $this->_registry = $registry;   
+        $this->_registry = $registry;
     }
-    
+
     /**
      * Ports a vBulletin product from the database into something that is
      * VDE compatible.
-     * 
-     * @param   string      Product ID (varname) to port
-     * @param   string      Full path to export it to ("projects/product_name")
+     *
+     * @param   string $productId
+     * @param   $out
+     * @throws  Exception
      */
     public function port($productId, $out) {
         if (!is_dir($out)) {
             mkdir($out, 0777, true);
         }
-        
+
         if (!$product = $this->_getProduct($productId)) {
-            throw new Exception("$productId not found in database");   
+            throw new Exception("$productId not found in database");
         }
-        
-        
+
         $data = $this->_fetchAllProductInformation($product);
-        
+
         // Create config.php
         $this->_createArrayFile($data['product'], "$out/config.php");
-        
+
         // Create /updown
         if ($data['updown']) {
-            if (!is_dir("$out/updown")) {   
-                mkdir("$out/updown");   
+            if (!is_dir("$out/updown")) {
+                mkdir("$out/updown");
             }
-            
+
             foreach ($data['updown'] as $version => $codes) {
                 foreach ($codes as $type => $code) {
-                    file_put_contents(   
+                    file_put_contents(
                         "$out/updown/$type-" . str_replace('*', 'all', $version) . ".php",
                         '<?php' . "\n\n" . $code
                     );
                 }
             }
         }
-        
+
         // Create /plugins
         if ($data['plugins']) {
-            if (!is_dir("$out/plugins")) {   
-                mkdir("$out/plugins");   
+            if (!is_dir("$out/plugins")) {
+                mkdir("$out/plugins");
             }
-            
+
             foreach ($data['plugins'] as $hook => $plugins) {
-                file_put_contents(   
+                file_put_contents(
                     "$out/plugins/$hook.php",
                     '<?php' . "\n\n" . implode("\n\n", $plugins)
                 );
             }
         }
-        
+
         // Create /templates
         if ($data['templates']) {
-            if (!is_dir("$out/templates")) {   
-                mkdir("$out/templates");   
-            }     
-            
-            foreach ($data['templates'] as $title => $html) {
-                file_put_contents(   
-                    "$out/templates/$title.html",
-                    $html
+            if (!is_dir("$out/templates")) {
+                mkdir("$out/templates");
+            }
+
+            foreach ($data['templates'] as $title => $info) {
+                if ($info['templatetype'] == 'template') {
+                    $filename = "$title.html";
+                } elseif ($info['templatetype'] == 'css') {
+                    $filename = "$title";
+                } else {
+                    continue;
+                }
+
+                file_put_contents(
+                    "$out/templates/$filename",
+                    $info['content']
                 );
             }
         }
-        
+
         // Create /phrases
         if ($data['phrases']) {
-            if (!is_dir("$out/phrases")) {   
-                mkdir("$out/phrases");   
+            if (!is_dir("$out/phrases")) {
+                mkdir("$out/phrases");
             }
-            
+
             foreach ($data['phrases'] as $group => $groupInfo) {
-                if (!is_dir("$out/phrases/$group")) {   
-                    mkdir("$out/phrases/$group");   
+                if (!is_dir("$out/phrases/$group")) {
+                    mkdir("$out/phrases/$group");
                 }
-                
+
                 if ($groupInfo['new']) {
-                    file_put_contents(   
+                    file_put_contents(
                         "$out/phrases/$group/$group.txt",
                         $groupInfo['title']
                     );
                 }
-                
+
                 foreach ($groupInfo['phrases'] as $phrase => $text) {
                     file_put_contents(
                         "$out/phrases/$group/$phrase.txt",
@@ -112,18 +120,18 @@ class VDE_Porter {
                 }
             }
         }
-        
+
         // Create /options
         if ($data['options']) {
-            if (!is_dir("$out/options")) {   
-                mkdir("$out/options");   
+            if (!is_dir("$out/options")) {
+                mkdir("$out/options");
             }
-            
+
             foreach ($data['options'] as $groupVarname => $group) {
                 if (!is_dir("$out/options/$groupVarname")) {
-                    mkdir("$out/options/$groupVarname");   
+                    mkdir("$out/options/$groupVarname");
                 }
-                
+
                 if ($group['new']) {
                     file_put_contents(
                         "$out/options/$groupVarname/$groupVarname.php",
@@ -132,7 +140,7 @@ class VDE_Porter {
                             'displayorder' => $group['displayorder']), true) . ';'
                     );
                 }
-                
+
                 foreach ($group['options'] as $varname => $option) {
                     file_put_contents(
                         "$out/options/$groupVarname/$varname.php",
@@ -142,11 +150,11 @@ class VDE_Porter {
             }
         }
     }
-    
+
     /**
      * Creates a file containing an exported array
-     * @param   array       Variable contents
-     * @param   string      Filename to create at
+     * @param   array       variable contents
+     * @param   string      filename to create at
      */
     protected function _createArrayFile($contents, $filename) {
         file_put_contents(
@@ -154,36 +162,35 @@ class VDE_Porter {
             '<?php return ' . var_export($contents, true) . ';'
         );
     }
-    
+
     /**
      * Takes a product from the database, and fetches all the associated information
      * in the VDE format.
-     * 
+     *
      * @param   array       Product row from database
-     * @return  array       Product info that is VDE compatible
      */
     protected function _fetchAllProductInformation(array $product) {
         $info['product'] = array(
             'id'           => $product['productid'],
             'buildPath'    => '',
             'title'        => $product['title'],
-            'description'  => $product['description'],   
+            'description'  => $product['description'],
             'url'          => $product['url'],
             'version'      => $product['version'],
-            'dependencies' => $this->_getDependencies($product['productid']),  
+            'dependencies' => $this->_getDependencies($product['productid']),
             'files'        => array()
         );
-        
-        $info['updown']    = $this->_getUpDown($product['productid']); 
+
+        $info['updown']    = $this->_getUpDown($product['productid']);
         $info['plugins']   = $this->_getPlugins($product['productid']);
         $info['templates'] = $this->_getTemplates($product['productid']);
-        $info['phrases']   = $this->_getPhrases($product['productid']); 
-        $info['tasks']     = $this->_getTasks($product['productid']); 
-        $info['options']   = $this->_getOptions($product['productid']); 
-        
+        $info['phrases']   = $this->_getPhrases($product['productid']);
+        $info['tasks']     = $this->_getTasks($product['productid']);
+        $info['options']   = $this->_getOptions($product['productid']);
+
         return $info;
     }
-    
+
     /**
      * Fetches product information from the database
      * @param   string      Product ID
@@ -196,7 +203,7 @@ class VDE_Porter {
              WHERE productid = " . $this->_registry->db->sql_prepare($id) . "
         ");
     }
-    
+
     /**
      * Fetches an array of dependencies for a given product, from the db
      * @param   string      Product ID
@@ -204,24 +211,24 @@ class VDE_Porter {
      */
     protected function _getDependencies($id) {
         $dependencies = array();
-        
+
         $result = $this->_registry->db->query_read("
             SELECT *
               FROM " . TABLE_PREFIX . "productdependency
              WHERE productid = " . $this->_registry->db->sql_prepare($id) . "
         ");
-        
+
         while ($dependency = $this->_registry->db->fetch_array($result)) {
             $dependencies[$dependency['dependencytype']] = array(
-                $dependency['minversion'], 
+                $dependency['minversion'],
                 $dependency['maxversion']
             );
         }
-        
+
         $this->_registry->db->free_result($result);
         return $dependencies;
     }
-    
+
     /**
      * Fetches an array of plugins for a given product
      * @param   string      Product ID
@@ -229,7 +236,7 @@ class VDE_Porter {
      */
     protected function _getPlugins($id) {
         $plugins = array();
-        
+
         $result = $this->_registry->db->query_read("
             SELECT *
               FROM " . TABLE_PREFIX . "plugin
@@ -238,15 +245,15 @@ class VDE_Porter {
             ORDER
                 BY executionorder
         ");
-        
+
         while ($plugin = $this->_registry->db->fetch_array($result)) {
             $plugins[$plugin['hookname']][] = $plugin['phpcode'];
         }
-        
+
         $this->_registry->db->free_result($result);
         return $plugins;
     }
-    
+
     /**
      * Fetches an array of templates for a given product
      * @param   string      Product ID
@@ -254,22 +261,25 @@ class VDE_Porter {
      */
     protected function _getTemplates($id) {
         $templates = array();
-        
+
         $result = $this->_registry->db->query_read("
             SELECT *
               FROM " . TABLE_PREFIX . "template
              WHERE product = " . $this->_registry->db->sql_prepare($id) . "
-               AND templatetype = 'template' 
+               AND templatetype in ('template', 'css')
         ");
-        
+
         while ($template = $this->_registry->db->fetch_array($result)) {
-            $templates[$template['title']] = $template['template_un'];
+            $templates[$template['title']] =
+                array(
+                    'templatetype' => $template['templatetype'],
+                    'content'      => $template['template_un']);
         }
-        
+
         $this->_registry->db->free_result($result);
         return $templates;
     }
-    
+
     /**
      * Fetches an array of all updown (install code) for a given product
      * @param   string      Product ID
@@ -277,24 +287,24 @@ class VDE_Porter {
      */
     protected function _getUpDown($id) {
         $upDown = array();
-        
+
         $result = $this->_registry->db->query_read("
             SELECT *
               FROM " . TABLE_PREFIX . "productcode
              WHERE productid = " . $this->_registry->db->sql_prepare($id) . "
         ");
-        
+
         while ($code = $this->_registry->db->fetch_array($result)) {
-            $upDown[$code['version']] = array(   
+            $upDown[$code['version']] = array(
                 'up'   => $code['installcode'],
                 'down' => $code['uninstallcode']
             );
         }
-        
+
         $this->_registry->db->free_result($result);
         return $upDown;
     }
-    
+
     /**
      * Gets all options for a given product
      * @param   string      Product iD
@@ -302,7 +312,7 @@ class VDE_Porter {
      */
     protected function _getOptions($id) {
         $options = array();
-        
+
         $result = $this->_registry->db->query_read("
             SELECT setting.*
                  , settinggroup.displayorder   AS group_displayorder
@@ -313,20 +323,20 @@ class VDE_Porter {
                 ON settinggroup.grouptitle = setting.grouptitle
              WHERE setting.product = " . $this->_registry->db->sql_prepare($id) . "
         ");
-        
+
         while ($option = $this->_registry->db->fetch_array($result)) {
             if (!$options[$option['grouptitle']]) {
-                $options[$option['grouptitle']] = array(   
+                $options[$option['grouptitle']] = array(
                     'title'        => $this->_getSpecialPhrase('settinggroup_' . $option['grouptitle'], $id),
                     'displayorder' => $option['group_displayorder'],
                     'new'          => $option['group_product'] == $id,
                     'options'      => array()
                 );
             }
-            
+
             $options[$option['grouptitle']]['options'][$option['varname']] = array(
-                'title'          => $this->_getSpecialPhrase('setting_' . $option['varname'] . '_title', $id), 
-                'description'    => $this->_getSpecialPhrase('setting_' . $option['varname'] . '_desc', $id), 
+                'title'          => $this->_getSpecialPhrase('setting_' . $option['varname'] . '_title', $id),
+                'description'    => $this->_getSpecialPhrase('setting_' . $option['varname'] . '_desc', $id),
                 'optioncode'     => $option['optioncode'],
                 'datatype'       => $option['datatype'],
                 'displayorder'   => $option['displayorder'],
@@ -337,9 +347,9 @@ class VDE_Porter {
             );
         }
 
-        return $options; 
+        return $options;
     }
-    
+
     /**
      * Fetches an array of tasks for a given product
      * @param   string      Product ID
@@ -347,31 +357,31 @@ class VDE_Porter {
      */
     protected function _getTasks($id) {
         $tasks = array();
-        
+
         $result = $this->_registry->db->query_read("
             SELECT *
               FROM " . TABLE_PREFIX . "cron
              WHERE product = " . $this->_registry->db->sql_prepare($id) . "
         ");
-        
+
         while ($task = $this->_registry->db->fetch_array($result)) {
-            $tasks[$task['varname']] = array(   
-                'title'          => $this->_getSpecialPhrase('task_' . $task['varname'] . '_title', $id), 
-                'description'    => $this->_getSpecialPhrase('task_' . $task['varname'] . '_desc', $id), 
-                'weekday'        => $task['weekday'],
-                'day'            => $task['day'],
-                'hour'           => $task['hour'],
-                'minute'         => $task['minute'],
-                'filename'       => $task['filename'],
-                'loglevel'       => $task['loglevel'],
-                'active'         => $task['active'],
-                'volatile'       => $task['volatile']
+            $tasks[$task['varname']] = array(
+                'title'       => $this->_getSpecialPhrase('task_' . $task['varname'] . '_title', $id),
+                'description' => $this->_getSpecialPhrase('task_' . $task['varname'] . '_desc', $id),
+                'weekday'     => $task['weekday'],
+                'day'         => $task['day'],
+                'hour'        => $task['hour'],
+                'minute'      => $task['minute'],
+                'filename'    => $task['filename'],
+                'loglevel'    => $task['loglevel'],
+                'active'      => $task['active'],
+                'volatile'    => $task['volatile']
             );
         }
-        
+
         return $tasks;
     }
-    
+
     /**
      * Fetches a special phrase
      * @param   string      Phrase varname
@@ -386,10 +396,10 @@ class VDE_Porter {
                AND languageid = -1
                AND product = " . $this->_registry->db->sql_prepare($productId) . "
         ");
-        
+
         return $result['text'];
     }
-    
+
     /**
      * Fetches all non-special phrases for a given product
      * @param   string      Product ID
@@ -397,7 +407,7 @@ class VDE_Porter {
      */
     protected function _getPhrases($id) {
         $phrases = array();
-        
+
         $result = $this->_registry->db->query_read("
             SELECT phrase.*
                  , phrasetype.title   AS group_title
@@ -414,7 +424,7 @@ class VDE_Porter {
                AND phrase.varname NOT LIKE 'setting_%_desc'
                AND phrase.varname NOT LIKE 'settinggroup_%'
         ");
-        
+
         while ($phrase = $this->_registry->db->fetch_array($result)) {
             if (!$phrases[$phrase['fieldname']]) {
                 $phrases[$phrase['fieldname']] = array(
@@ -423,11 +433,11 @@ class VDE_Porter {
                     'phrases' => array()
                 );
             }
-            
+
             $phrases[$phrase['fieldname']]['phrases'][$phrase['varname']] = $phrase['text'];
         }
-        
+
         $this->_registry->db->free_result($phrase);
-        return $phrases;   
+        return $phrases;
     }
 }
