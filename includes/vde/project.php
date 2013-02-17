@@ -64,8 +64,9 @@ class VDE_Project {
     public $ignore;
 
     /**
-     * Instaniates a new project from a given project root directory.
-     * @param   string      Root path of project, must contain config.php
+     * Instantiates a new project from a given project root directory.
+     * @param   $path   string      Root path of project, must contain config.php
+     * @throws          VDE_Project_Exception
      */
     public function __construct($path) {
         if (!file_exists("$path/config.php")) {
@@ -145,7 +146,7 @@ class VDE_Project {
             if (preg_match('/^(up|down)-(.*)\.php$/', $file, $matches)) {
                 list($null, $updown, $version) = $matches;
 
-                $versions[$version][$updown] = $this->_getEvalableCode(file_get_contents(
+                $versions[$version][$updown] = $this->_getEvaluableCode(file_get_contents(
                     "$dir/$file"
                 ));
             }
@@ -220,7 +221,7 @@ class VDE_Project {
                 continue;
             }
 
-            $plugins[substr($file, 0, -4)] = $this->_getEvalableCode(file_get_contents("$dir/$file"));
+            $plugins[substr($file, 0, -4)] = $this->_getEvaluableCode(file_get_contents("$dir/$file"));
         }
 
         return $plugins;
@@ -249,7 +250,7 @@ class VDE_Project {
                 'title'          => $this->meta['title'] . " - $hook",
                 'active'         => 1,
                 'executionorder' => 10,
-                'code'           => $this->_getEvalableCode(file_get_contents("$dir/$file"))
+                'code'           => $this->_getEvaluableCode(file_get_contents("$dir/$file"))
             );
         }
 
@@ -259,10 +260,10 @@ class VDE_Project {
     /**
      * Strips a PHP code file of its PHP tags
      *
-     * @param   string      PHP Code containing PHP tags
-     * @return  string      PHP Code that is safe to eval()
+     * @param   $code   string      PHP Code containing PHP tags
+     * @return          string      PHP Code that is safe to eval()
      */
-    protected function _getEvalableCode($code) {
+    protected function _getEvaluableCode($code) {
         return trim(trim($code, '<?php'));
     }
 
@@ -426,7 +427,7 @@ class VDE_Project {
     public function getNavigation() {
         $menuItems = array();
 
-        if (!is_dir($dir = $this->_path . '/navbar-menu')) {
+        if (!is_dir($dir = $this->_path . '/navigation')) {
             return array();
         }
 

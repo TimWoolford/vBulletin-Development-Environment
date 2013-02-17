@@ -57,7 +57,7 @@ class VDE_Builder {
 
     /**
      * Constructor
-     * @param   vB_Registry
+     * @param   $registry   vB_Registry
      */
     public function __construct(vB_Registry $registry) {
         $this->_registry = $registry;
@@ -128,13 +128,13 @@ class VDE_Builder {
             $this->_output .= "Created project checksum file\n";
         }
 
-        $this->_output .= "Project {$project->meta[title]} Built Succesfully!\n\n";
+        $this->_output .= "Project {$project->meta['title']} Built Succesfully!\n\n";
         return $this->_output;
     }
 
     /**
      * Adds the dependencies to the product XML file
-     * @param   array       Dependencies from config.php
+     * @param   $dependencies   array       Dependencies from config.php
      */
     protected function _processDependencies($dependencies) {
         $this->_xml->add_group('dependencies');
@@ -153,7 +153,7 @@ class VDE_Builder {
 
     /**
      * Adds the install and uninstall code to the product XML file
-     * @param   array       Versions and associated install/uninstall code from files
+     * @param   $versions   array       Versions and associated install/uninstall code from files
      */
     protected function _processCodes($versions) {
         $this->_xml->add_group('codes');
@@ -175,7 +175,7 @@ class VDE_Builder {
      * Adds the scheduled tasks to the product XML file
      * Stores the internal phrases to also be added to the XML file later
      *
-     * @param   array       Scheduled tasks from filesystem
+     * @param   $tasks  array       Scheduled tasks from filesystem
      */
     protected function _processTasks($tasks) {
         $this->_xml->add_group('cronentries');
@@ -215,7 +215,7 @@ class VDE_Builder {
 
     /**
      * Adds the plugins to the product XML file
-     * @param   array       Plugins from filesystem
+     * @param   $plugins    array       Plugins from filesystem
      */
     protected function _processPlugins($plugins) {
         $this->_xml->add_group('plugins');
@@ -249,8 +249,8 @@ class VDE_Builder {
      *
      * #if runtime = only runs in VDE - does not get built
      *
-     * @param    string        Code before processing
-     * @return   string        Code after processing
+     * @param    $code  string        Code before processing
+     * @return          string        Code after processing
      */
     protected function _processBuildComments($code) {
         if (strpos($code, '#if') === false) {
@@ -266,7 +266,7 @@ class VDE_Builder {
 
     /**
      * Adds the templates to the product XML file
-     * @param   array       Templates from filesystem
+     * @param   $templates      array       Templates from filesystem
      */
     protected function _processTemplates($templates) {
         $this->_xml->add_group('templates');
@@ -348,10 +348,10 @@ class VDE_Builder {
      * Adds the option / option groups to the product XML file
      * Also stores the internal phrases to be added later
      *
-     * @param   array       Options from files
+     * @param   $optionGroups   array       Options from files
      */
     protected function _processOptions($optionGroups) {
-        $existingGroups = $this->_findExistingPhrasegroups();
+        $existingGroups = $this->_findExistingPhraseGroups();
 
         $this->_xml->add_group('options');
 
@@ -395,8 +395,8 @@ class VDE_Builder {
 
                 $this->_xml->close_group();
 
-                $this->_phrases['vbsettings']['phrases']["setting_{$option[varname]}_title"] = $option['title'];
-                $this->_phrases['vbsettings']['phrases']["setting_{$option[varname]}_desc"]  = $option['description'];
+                $this->_phrases['vbsettings']['phrases']["setting_{$option['varname']}_title"] = $option['title'];
+                $this->_phrases['vbsettings']['phrases']["setting_{$option['varname']}_desc"]  = $option['description'];
 
                 $this->_output .= "Added option $option[varname]\n";
             }
@@ -413,7 +413,7 @@ class VDE_Builder {
 
     /**
      * Add the phrases to the product XML file.
-     * @param   array       Phrases from filesystem + tasks/settings
+     * @param  $phraseTypes     array       Phrases from filesystem + tasks/settings
      */
     protected function _processPhrases($phraseTypes) {
         $this->_xml->add_group('phrases');
@@ -470,8 +470,8 @@ class VDE_Builder {
 
     /**
      * Initiate copying of files and creation of upload dir.
-     * @param   array       Files to copy
-     * @param   string      Upload path (build dir / upload)
+     * @param   $files      array       Files to copy
+     * @param   $uploadPath string      Upload path (build dir / upload)
      */
     protected function _copyFiles($files, $uploadPath) {
         if (!is_dir($uploadPath)) {
@@ -494,8 +494,8 @@ class VDE_Builder {
 
     /**
      * Expands any complete directories listed to include all of their files
-     * @param   array       Files array
-     * @return  array       Files array, with directories filled with actual file contents
+     * @param   $files      array       Files array
+     * @return              array       Files array, with directories filled with actual file contents
      */
     protected function _expandDirectories($files) {
         foreach ($files as $index => $file) {
@@ -515,7 +515,7 @@ class VDE_Builder {
         return $files;
     }
 
-    protected function _findExistingPhrasegroups() {
+    protected function _findExistingPhraseGroups() {
         $result = $this->_registry->db->query_read("
             SELECT fieldname
               FROM " . TABLE_PREFIX . "phrasetype
@@ -546,8 +546,8 @@ class VDE_Builder_Checksums {
 
     /**
      * Builds a VDE project's checksums
-     * @param VDE_Project $project
-     * @param $uploadPath
+     * @param $project      VDE_Project
+     * @param $uploadPath   string
      */
     public function build(VDE_Project $project, $uploadPath) {
         // vBulletin compatible checksums
@@ -570,10 +570,10 @@ class VDE_Builder_Checksums {
 
     /**
      * Generates an array of file checksums for all files associated with a project
-     * @param    VDE_Project
-     * @return   array        dir => array(filename => hash), ...
+     * @param    $project   VDE_Project
+     * @return              array        dir => array(filename => hash), ...
      */
-    protected function _generateFileChecksums($project) {
+    protected function _generateFileChecksums(VDE_Project $project) {
         $dir = str_replace('\\', '/', DIR);
 
         $checksums = array();
@@ -590,10 +590,10 @@ class VDE_Builder_Checksums {
 
     /**
      * Creates an array of plugin + template checksums
-     * @param    VDE_Project
-     * @return   array        Checksums (plugins => array(hook => md5), templates => array(title => md5))
+     * @param    $project   VDE_Project
+     * @return              array        Checksums (plugins => array(hook => md5), templates => array(title => md5))
      */
-    protected function _generateProductChecksums($project) {
+    protected function _generateProductChecksums(VDE_Project $project) {
         $checksums = array(
             'files'     => $this->_generateFileChecksums($project),
             'plugins'   => array(),
@@ -613,10 +613,9 @@ class VDE_Builder_Checksums {
 
     /**
      * Creates a checksum file from var assignments
-     * @param    array $assignments
-     * @param    string       Filename to write to
-     * @param    VDE_Project $project
-     * @internal param \Assignments $array
+     * @param    $assignments   array
+     * @param    $filename      string       Filename to write to
+     * @param    $project       VDE_Project
      */
     protected function _createFile(array $assignments, $filename, VDE_Project $project) {
         $vars = '';
@@ -638,10 +637,9 @@ class VDE_Builder_Checksums {
 
     /**
      * Creates a checksum / md5 from a given source
-     * @param    string        Filename OR string contents
-     * @param    bool      $isFile
-     * @internal param \Is $boolean $source a file?
-     * @return   string        md5 hash of source
+     * @param    $source    string        Filename OR string contents
+     * @param    $isFile    bool
+     * @return              string        md5 hash of source
      */
     protected function _generateChecksum($source, $isFile = true) {
         if ($isFile) {
