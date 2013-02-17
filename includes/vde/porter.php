@@ -495,7 +495,7 @@ class VDE_Porter {
             "SELECT n.name,
                     n.displayorder,
                     n.url,
-                    n.showperm AS 'show',
+                    n.showperm,
                     n.navtype,
                     n.scripts,
                     p.text

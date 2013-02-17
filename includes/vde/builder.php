@@ -308,7 +308,7 @@ class VDE_Builder {
 
             $this->_xml->add_tag('active', '1');
             $this->_xml->add_tag('displayorder', $item['displayorder']);
-            $this->_xml->add_tag('show', $item['show']);
+            $this->_xml->add_tag('show', $item['showperm']);
             $this->_xml->add_tag('scripts', $item['scripts']);
             $this->_xml->add_tag('url', $item['url'], array(), true);
 
